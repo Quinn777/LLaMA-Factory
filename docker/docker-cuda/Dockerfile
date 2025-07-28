@@ -3,7 +3,9 @@ ARG BASE_IMAGE=hiyouga/pytorch:th2.6.0-cu124-flashattn2.7.4-cxx11abi0-devel
 FROM ${BASE_IMAGE}
 
 # Installation arguments
-ARG PIP_INDEX=https://pypi.org/simple
+# ARG PIP_INDEX=https://pypi.org/simple
+# ARG APT_SOURCE=https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
+ARG PIP_INDEX=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 ARG EXTRAS=metrics
 ARG INSTALL_FLASHATTN=false
 ARG HTTP_PROXY=""
@@ -27,23 +29,32 @@ WORKDIR /app
 # Change pip source
 RUN pip config set global.index-url "${PIP_INDEX}" && \
     pip config set global.extra-index-url "${PIP_INDEX}" && \
-    pip install --no-cache-dir --upgrade pip packaging wheel setuptools
+    pip install --no-cache-dir --upgrade pip packaging wheel setuptools \
+    --progress-bar off \
+    --no-use-pep517 \
+    --no-warn-script-location
 
 # Install the requirements
 COPY requirements.txt /app
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    --progress-bar off \
+    --no-use-pep517 \
+    --no-warn-script-location
 
 # Copy the rest of the application into the image
 COPY . /app
 
 # Install LLaMA Factory
-RUN pip install --no-cache-dir -e ".[${EXTRAS}]" --no-build-isolation
+RUN pip install --no-cache-dir -e ".[${EXTRAS}]" \
+    --no-build-isolation \
+    --progress-bar off \
+    --no-warn-script-location
 
 # Rebuild flash attention
 RUN if [ "${INSTALL_FLASHATTN}" == "true" ]; then \
-        pip uninstall -y ninja && \
-        pip install --no-cache-dir ninja && \
-        pip install --no-cache-dir flash-attn --no-build-isolation; \
+    pip uninstall -y ninja && \
+    pip install --no-cache-dir ninja && \
+    pip install --no-cache-dir flash-attn --no-build-isolation; \
     fi
 
 # Set up volumes
